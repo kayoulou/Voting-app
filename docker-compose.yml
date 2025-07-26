@@ -1,0 +1,115 @@
+version: "3.8"
+
+services:
+  #  Base de données PostgreSQL 
+  db:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      -private_backend_net
+
+  #  Redis 
+  redis:
+    image: redis:${REDIS_VERSION}
+    container_name: redis
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - private_backend_net
+
+  # Worker
+  worker:
+    build: ./worker
+    container_name: worker
+    environment:
+      PG_SERVER_CS: ${DB_HOST}
+      PG_USER_CS: ${DB_USER}
+      PG_PASSWORD_CS: ${DB_PASSWORD}
+      REDIS_HOST: ${REDIS_HOST}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - private_backend_net
+
+  #  Voting 
+  voting:
+    build: ./voting
+    container_name: voting
+    environment:
+      PORT_NODE: ${VOTE_PORT}
+      PG_CONNECTION_STRING_NODE: postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}
+    ports:
+      - "${VOTE_PORT}:4000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - private_backend_net
+      - public_frontend_net
+
+  # Result 
+  result:
+    build: ./result
+    container_name: result
+    environment:
+      OPTION_A: ${OPTION_A}
+      OPTION_B: ${OPTION_B}
+      REDIS_HOST: ${REDIS_HOST}
+      PORT_FLASK: ${RESULT_PORT}
+    ports:
+      - "${RESULT_PORT}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - private_backend_net
+      - public_frontend_net
+
+  # Jenkins 
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "${JENKINS_PORT}:8080"
+      - "${JENKINS_AGENT_PORT}:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - private_backend_net
+      - public_frontend_net
+
+
+volumes:
+  pgdata:
+  jenkins_home:
+
+
+networks:
+  private_backend_net:
+    driver: bridge
+  public_frontend_net:
+    driver: bridge
