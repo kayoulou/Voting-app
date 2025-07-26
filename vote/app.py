@@ -5,7 +5,11 @@ import socket
 import random
 import json
 import logging
+from dotenv import load_dotenv # NOUVEAU : Importe la fonction pour charger les variables d'environnement
 
+load_dotenv() # NOUVEAU : Charge les variables d'environnement du fichier .env
+
+# Récupère les options de vote depuis les variables d'environnement
 option_a = os.getenv('OPTION_A', "Cats")
 option_b = os.getenv('OPTION_B', "Dogs")
 hostname = socket.gethostname()
@@ -18,7 +22,9 @@ app.logger.setLevel(logging.INFO)
 
 def get_redis():
     if not hasattr(g, 'redis'):
-        g.redis = Redis(host="redis", db=0, socket_timeout=5)
+        # NOUVEAU : Récupère l'hôte Redis depuis les variables d'environnement
+        redis_host = os.getenv('REDIS_HOST', 'redis')
+        g.redis = Redis(host=redis_host, db=0, socket_timeout=5)
     return g.redis
 
 @app.route("/", methods=['POST','GET'])
@@ -48,7 +54,6 @@ def hello():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, debug=True, threaded=True)
-
-
-
+    # NOUVEAU : Récupère le port Flask depuis les variables d'environnement
+    flask_port = int(os.getenv('PORT_FLASK', 80))
+    app.run(host='0.0.0.0', port=flask_port, debug=True, threaded=True)

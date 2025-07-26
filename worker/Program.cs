@@ -7,6 +7,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Npgsql;
 using StackExchange.Redis;
+using DotNetEnv; // NOUVEAU : Importe la bibliothèque pour charger les variables d'environnement
 
 namespace Worker
 {
@@ -14,10 +15,22 @@ namespace Worker
     {
         public static int Main(string[] args)
         {
+            // NOUVEAU : Charge les variables d'environnement du fichier .env
+            Env.Load();
+
             try
             {
-                var pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
-                var redisConn = OpenRedisConnection("redis");
+                // NOUVEAU : Récupère les variables d'environnement pour la connexion PostgreSQL
+                var pgServer = Environment.GetEnvironmentVariable("PG_SERVER_CS") ?? "db";
+                var pgUser = Environment.GetEnvironmentVariable("PG_USER_CS") ?? "postgres"; // Utilisez le nom de variable correct
+                var pgPassword = Environment.GetEnvironmentVariable("PG_PASSWORD_CS") ?? "postgres"; // Utilisez le nom de variable correct
+                var pgDbName = Environment.GetEnvironmentVariable("POSTGRES_DB") ?? "db"; // NOUVEAU : Récupère le nom de la DB
+
+                // NOUVEAU : Récupère l'hôte Redis depuis les variables d'environnement
+                var redisHost = Environment.GetEnvironmentVariable("REDIS_HOST") ?? "redis";
+
+                var pgsql = OpenDbConnection($"Server={pgServer};Username={pgUser};Password={pgPassword};Database={pgDbName};"); // NOUVEAU : Utilise les variables
+                var redisConn = OpenRedisConnection(redisHost); // NOUVEAU : Utilise la variable
                 var redis = redisConn.GetDatabase();
 
                 // Keep alive is not implemented in Npgsql yet. This workaround was recommended:
@@ -34,7 +47,7 @@ namespace Worker
                     // Reconnect redis if down
                     if (redisConn == null || !redisConn.IsConnected) {
                         Console.WriteLine("Reconnecting Redis");
-                        redisConn = OpenRedisConnection("redis");
+                        redisConn = OpenRedisConnection(redisHost); // Utilise la variable
                         redis = redisConn.GetDatabase();
                     }
                     string json = redis.ListLeftPopAsync("votes").Result;
@@ -46,7 +59,7 @@ namespace Worker
                         if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
                         {
                             Console.WriteLine("Reconnecting DB");
-                            pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
+                            pgsql = OpenDbConnection($"Server={pgServer};Username={pgUser};Password={pgPassword};Database={pgDbName};"); // Utilise les variables
                         }
                         else
                         { // Normal +1 vote requested
@@ -152,7 +165,3 @@ namespace Worker
         }
     }
 }
-
-
-
-

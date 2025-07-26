@@ -6,7 +6,6 @@ services:
     image: postgres:${POSTGRES_VERSION}
     container_name: db
     environment:
-      # Ces variables sont lues depuis le .env
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -15,7 +14,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      # Le healthcheck utilise aussi les variables du .env
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
@@ -44,7 +42,6 @@ services:
     build: ./worker
     container_name: worker
     environment:
-      # Ces variables sont lues depuis le .env
       PG_SERVER_CS: ${DB_HOST}
       PG_USER_CS: ${POSTGRES_USER}
       PG_PASSWORD_CS: ${POSTGRES_PASSWORD}
@@ -62,7 +59,7 @@ services:
     build: ./vote
     container_name: voting
     environment:
-      PORT_FLASK: "80" # Port interne de l'application Flask
+      PORT_FLASK: "80"
       OPTION_A: ${OPTION_A}
       OPTION_B: ${OPTION_B}
       REDIS_HOST: ${REDIS_HOST}
@@ -70,7 +67,7 @@ services:
       - "${VOTE_PORT}:80"
     depends_on:
       redis:
-        condition: service:healthy
+        condition: service_healthy
     networks:
       - private_backend_net
       - public_frontend_net
@@ -80,8 +77,7 @@ services:
     build: ./result
     container_name: result
     environment:
-      PORT_NODE: "4000" # Port interne de l'application Node.js
-      # La chaîne de connexion est construite ici avec les variables du .env
+      PORT_NODE: "4000"
       PG_CONNECTION_STRING_NODE: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}/${POSTGRES_DB}
       OPTION_A: ${OPTION_A}
       OPTION_B: ${OPTION_B}

@@ -1,3 +1,5 @@
+require('dotenv').config(); // NOUVEAU : Charge les variables d'environnement du fichier .env au tout début
+
 var express = require('express'),
     async = require('async'),
     { Pool } = require('pg'),
@@ -6,6 +8,7 @@ var express = require('express'),
     server = require('http').Server(app),
     io = require('socket.io')(server);
 
+// CORRIGÉ : Utilise process.env.PORT_NODE pour récupérer le port
 var port = process.env.PORT_NODE || 4000;
 
 io.on('connection', function (socket) {
@@ -18,7 +21,8 @@ io.on('connection', function (socket) {
 });
 
 var pool = new Pool({
-  connectionString: 'postgres://postgres:postgres@db/postgres'
+  // CORRIGÉ : Utilise la variable d'environnement pour la chaîne de connexion PostgreSQL
+  connectionString: process.env.PG_CONNECTION_STRING_NODE || 'postgres://postgres:postgres@db/postgres'
 });
 
 async.retry(
@@ -68,6 +72,7 @@ app.use(express.urlencoded());
 app.use(express.static(__dirname + '/views'));
 
 app.get('/', function (req, res) {
+  var path = require('path'); // Assurez-vous que 'path' est importé
   res.sendFile(path.resolve(__dirname + '/views/index.html'));
 });
 
@@ -75,5 +80,3 @@ server.listen(port, function () {
   var port = server.address().port;
   console.log('App running on port ' + port);
 });
-
-
