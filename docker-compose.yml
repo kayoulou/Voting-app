@@ -97,6 +97,7 @@ services:
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins
+    user: root 
     ports:
       - "${JENKINS_PORT}:8080"
       - "${JENKINS_AGENT_PORT}:50000"
@@ -118,3 +119,4 @@ networks:
     driver: bridge
   public_frontend_net:
     driver: bridge
+
